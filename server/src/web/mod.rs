@@ -63,7 +63,7 @@ use crate::{
     },
 };
 
-pub type MaMState = Arc<Result<Arc<MaM<'static>>>>;
+pub type MaMState = Arc<Result<Arc<MaM>>>;
 
 pub async fn start_webserver(context: Context) -> Result<()> {
     let config = context.config().await;

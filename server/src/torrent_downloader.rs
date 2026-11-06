@@ -29,7 +29,7 @@ pub async fn grab_selected_torrents(
     db: &Database<'_>,
     qbit: &qbit::Api,
     qbit_url: &str,
-    mam: &MaM<'_>,
+    mam: &MaM,
 ) -> Result<()> {
     let selected_torrents = {
         let r = db.r_transaction()?;
@@ -138,7 +138,7 @@ async fn grab_torrent(
     db: &Database<'_>,
     qbit: &qbit::Api,
     qbit_url: &str,
-    mam: &MaM<'_>,
+    mam: &MaM,
     torrent: SelectedTorrent,
 ) -> Result<()> {
     info!(
@@ -378,7 +378,7 @@ pub struct StaleDlLink;
 /// then answers with something that isn't bencode at all.
 async fn fetch_torrent_file(
     db: &Database<'_>,
-    mam: &MaM<'_>,
+    mam: &MaM,
     torrent: &SelectedTorrent,
     wedge: bool,
 ) -> Result<(Bytes, Torrent)> {
@@ -418,7 +418,7 @@ async fn fetch_torrent_file(
 const MAX_RATE_LIMIT_RETRIES: u32 = 3;
 
 pub(crate) async fn get_mam_torrent_file(
-    mam: &MaM<'_>,
+    mam: &MaM,
     dl_hash: &str,
     tid: u64,
     wedge: bool,

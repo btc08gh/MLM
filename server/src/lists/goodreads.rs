@@ -32,7 +32,7 @@ static IMPORT_MUTEX: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 pub async fn run_goodreads_import(
     config: Arc<Config>,
     db: Arc<Database<'_>>,
-    mam: Arc<MaM<'_>>,
+    mam: Arc<MaM>,
     list: &GoodreadsList,
     max_torrents: u64,
 ) -> Result<()> {
@@ -144,7 +144,7 @@ pub async fn run_goodreads_import(
 async fn search_item(
     config: &Config,
     db: &Database<'_>,
-    mam: &MaM<'_>,
+    mam: &MaM,
     list: &GoodreadsList,
     item: &Item,
     mut db_item: ListItem,

@@ -23,7 +23,7 @@ use crate::{
 pub async fn run_snatchlist_search(
     config: Arc<Config>,
     db: Arc<Database<'_>>,
-    mam: Arc<MaM<'_>>,
+    mam: Arc<MaM>,
     index: usize,
     snatchlist_config: Arc<SnatchlistSearch>,
 ) -> Result<()> {
@@ -60,7 +60,7 @@ async fn search_and_update_torrents(
     config: &Config,
     db: &Database<'_>,
     torrent_search: &SnatchlistSearch,
-    mam: &MaM<'_>,
+    mam: &MaM,
 ) -> Result<()> {
     let max_pages = torrent_search.max_pages.unwrap_or(100);
     let now = UtcDateTime::now();

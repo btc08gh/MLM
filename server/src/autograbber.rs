@@ -43,7 +43,7 @@ static AUTOGRABBER_MUTEX: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new
 pub async fn run_autograbber(
     config: Arc<Config>,
     db: Arc<Database<'_>>,
-    mam: Arc<MaM<'_>>,
+    mam: Arc<MaM>,
     autograb_trigger: Sender<()>,
     index: usize,
     autograb_config: Arc<TorrentSearch>,
@@ -118,7 +118,7 @@ pub async fn search_and_select_torrents(
     db: &Database<'_>,
     torrent_search: &TorrentSearch,
     fields: SearchFields,
-    mam: &MaM<'_>,
+    mam: &MaM,
     max_torrents: u64,
 ) -> Result<u64> {
     let torrents = search_torrents(torrent_search, fields, mam)
@@ -171,7 +171,7 @@ pub async fn search_and_select_torrents(
 pub async fn search_torrents(
     torrent_search: &TorrentSearch,
     fields: SearchFields,
-    mam: &MaM<'_>,
+    mam: &MaM,
 ) -> Result<impl Iterator<Item = MaMTorrent>> {
     let target = match torrent_search.kind {
         Type::Bookmarks => Some(SearchTarget::Bookmarks),
@@ -307,7 +307,7 @@ pub async fn search_torrents(
 #[instrument(skip_all)]
 pub async fn mark_removed_torrents(
     db: &Database<'_>,
-    mam: &MaM<'_>,
+    mam: &MaM,
     torrents: &[MaMTorrent],
 ) -> Result<()> {
     if let (Some(first), Some(last)) = (torrents.first(), torrents.last()) {
@@ -343,7 +343,7 @@ pub async fn mark_removed_torrents(
 pub async fn select_torrents<T: Iterator<Item = MaMTorrent>>(
     config: &Config,
     db: &Database<'_>,
-    mam: &MaM<'_>,
+    mam: &MaM,
     torrents: T,
     grabber: &TorrentFilter,
     cost: Cost,
@@ -780,7 +780,7 @@ pub async fn update_torrent_meta(
 async fn update_selected_torrent_meta(
     db: &Database<'_>,
     (guard, rw): (MutexGuard<'_, ()>, RwTransaction<'_>),
-    mam: &MaM<'_>,
+    mam: &MaM,
     torrent: SelectedTorrent,
     meta: TorrentMeta,
 ) -> Result<()> {
@@ -809,7 +809,7 @@ async fn update_selected_torrent_meta(
     Ok(())
 }
 
-pub async fn get_mam_torrent_hash(mam: &MaM<'_>, dl_hash: &str, tid: u64) -> Result<String> {
+pub async fn get_mam_torrent_hash(mam: &MaM, dl_hash: &str, tid: u64) -> Result<String> {
     let torrent_file_bytes = get_mam_torrent_file(mam, dl_hash, tid, false).await?;
     let torrent_file = Torrent::read_from_bytes(torrent_file_bytes.clone())?;
     let hash = torrent_file.info_hash();

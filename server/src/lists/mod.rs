@@ -78,7 +78,7 @@ pub fn get_lists(config: &Config) -> Vec<List> {
 pub async fn run_list_import(
     config: Arc<Config>,
     db: Arc<Database<'_>>,
-    mam: Arc<MaM<'_>>,
+    mam: Arc<MaM>,
     list: Arc<List>,
     index: usize,
     autograb_trigger: Sender<()>,
@@ -187,7 +187,7 @@ fn set_existing(field: &mut Option<ListItemTorrent>, torrent: &Torrent) -> bool 
 #[instrument(skip_all)]
 async fn search_grab(
     config: &Config,
-    mam: &MaM<'_>,
+    mam: &MaM,
     db_item: &ListItem,
     grab: &Grab,
 ) -> Result<Vec<(MaMTorrent, TorrentMeta, usize, Grab)>> {

@@ -511,7 +511,7 @@ fn duration(seconds: f64) -> String {
 async fn other_torrents(
     config: &Config,
     db: &Database<'_>,
-    mam: &MaM<'_>,
+    mam: &MaM,
     meta: &TorrentMeta,
 ) -> Result<MaMTorrentsTemplate> {
     let title = meta

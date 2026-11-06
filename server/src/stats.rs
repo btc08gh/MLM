@@ -71,7 +71,7 @@ pub struct Triggers {
 pub struct Context {
     pub config: Arc<Mutex<Arc<Config>>>,
     pub db: Arc<Database<'static>>,
-    pub mam: Arc<Result<Arc<MaM<'static>>>>,
+    pub mam: Arc<Result<Arc<MaM>>>,
     pub stats: Stats,
     // pub events: Events,
     pub triggers: Triggers,
@@ -82,7 +82,7 @@ impl Context {
         self.config.lock().await.clone()
     }
 
-    pub fn mam(&self) -> Result<Arc<MaM<'static>>> {
+    pub fn mam(&self) -> Result<Arc<MaM>> {
         let Ok(mam) = self.mam.as_ref() else {
             return Err(anyhow::Error::msg("mam_id error"));
         };

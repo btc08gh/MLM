@@ -214,14 +214,23 @@ async fn app_main() -> Result<()> {
     let (downloader_tx, mut downloader_rx) = watch::channel(());
     let (audiobookshelf_tx, mut audiobookshelf_rx) = watch::channel(());
 
-    let mam = if config.mam_id.is_empty() {
-        Err(anyhow::Error::msg("No mam_id set"))
-    } else {
-        MaM::new(&config.mam_id, db.clone(), env!("CARGO_PKG_VERSION"))
-            .await
-            .map(Arc::new)
-    };
+    let mam = MaM::new(
+        &config.mam_id,
+        config_file.with_file_name("mam-session.state"),
+        env!("CARGO_PKG_VERSION"),
+    )
+    .await
+    .map(Arc::new);
     if let Ok(mam) = &mam {
+        let renewal_client = mam.clone();
+        tokio::spawn(async move {
+            loop {
+                sleep(Duration::from_secs(24 * 60 * 60)).await;
+                if let Err(err) = renewal_client.renew_mam_id().await {
+                    tracing::warn!("MAM session keepalive failed: {err}");
+                }
+            }
+        });
         {
             let config = config.clone();
             let db = db.clone();

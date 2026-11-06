@@ -47,7 +47,7 @@ pub async fn link_torrents_to_library(
     config: Arc<Config>,
     db: Arc<Database<'_>>,
     qbit: (&QbitConfig, &qbit::Api),
-    mam: Arc<MaM<'_>>,
+    mam: Arc<MaM>,
 ) -> Result<()> {
     let torrents = qbit
         .1
@@ -226,7 +226,7 @@ async fn match_torrent(
     config: Arc<Config>,
     db: Arc<Database<'_>>,
     qbit: (&QbitConfig, &qbit::Api),
-    mam: Arc<MaM<'_>>,
+    mam: Arc<MaM>,
     hash: &str,
     torrent: &QbitTorrent,
     library: &Library,
@@ -320,7 +320,7 @@ async fn match_torrent(
 pub async fn refresh_metadata(
     config: &Config,
     db: &Database<'_>,
-    mam: &MaM<'_>,
+    mam: &MaM,
     id: String,
 ) -> Result<(Torrent, MaMTorrent)> {
     let Some(mut torrent): Option<Torrent> = db.r_transaction()?.get().primary(id)? else {
@@ -357,7 +357,7 @@ pub async fn refresh_metadata(
 pub async fn refresh_metadata_relink(
     config: &Config,
     db: &Database<'_>,
-    mam: &MaM<'_>,
+    mam: &MaM,
     hash: String,
 ) -> Result<()> {
     let mut torrent = None;
