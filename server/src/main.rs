@@ -222,6 +222,15 @@ async fn app_main() -> Result<()> {
             .map(Arc::new)
     };
     if let Ok(mam) = &mam {
+        let renewal_client = mam.clone();
+        tokio::spawn(async move {
+            loop {
+                if let Err(err) = renewal_client.renew_mam_id().await {
+                    tracing::warn!("MAM session keepalive failed: {err}");
+                }
+                sleep(Duration::from_secs(24 * 60 * 60)).await;
+            }
+        });
         {
             let config = config.clone();
             let db = db.clone();

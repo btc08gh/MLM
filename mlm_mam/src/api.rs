@@ -59,10 +59,12 @@ pub struct MaM<'a> {
     pub user: Arc<Mutex<Option<(SystemTime, UserResponse)>>>,
 }
 
+const MAM_URL: &str = "https://www.myanonamouse.net/jsonLoad.php";
+
 impl<'a> MaM<'a> {
     pub async fn new(mam_id: &str, db: Arc<Database<'a>>, version: &str) -> Result<MaM<'a>> {
         let jar: CookieStoreRwLock = Default::default();
-        let url = "https://www.myanonamouse.net/json".parse::<Url>().unwrap();
+        let url = MAM_URL.parse::<Url>()?;
 
         let stored_mam_id = db
             .r_transaction()
@@ -77,7 +79,7 @@ impl<'a> MaM<'a> {
         }
         let has_stored_mam_id = stored_mam_id.is_some();
         let cookie = Cookie::build(("mam_id", stored_mam_id.unwrap_or(mam_id.to_owned())))
-            .expires(OffsetDateTime::now_local()? + Duration::from_mins(10))
+            .path("/").secure(true)
             .build();
         jar.write()
             .unwrap()
@@ -100,12 +102,13 @@ impl<'a> MaM<'a> {
             if has_stored_mam_id {
                 warn!("Stored mam_id failed with {err}, falling back to config value");
                 let cookie = Cookie::build(("mam_id", mam_id.to_owned()))
-                    .expires(OffsetDateTime::now_local()? + Duration::from_mins(10))
+                    .path("/").secure(true)
                     .build();
-                mam.jar
-                    .write()
-                    .unwrap()
-                    .store_response_cookies([cookie].into_iter(), &url);
+                {
+                    let mut jar = mam.jar.write().unwrap();
+                    jar.remove("myanonamouse.net", "/", "mam_id");
+                    jar.store_response_cookies([cookie].into_iter(), &url);
+                }
 
                 // Retry with user_info()
                 mam.user_info().await?;
@@ -115,6 +118,59 @@ impl<'a> MaM<'a> {
         }
 
         Ok(mam)
+    }
+
+    pub async fn renew_mam_id(&self) -> Result<()> {
+        let url = MAM_URL.parse::<Url>()?;
+        let current = {
+            let jar = self.jar.read().unwrap();
+            jar.get_request_values(&url)
+                .find(|(name, _)| *name == "mam_id")
+                .map(|(_, value)| value.to_owned())
+        };
+        let Some(current) = current else {
+            bail!("No MAM cookie available for keepalive");
+        };
+
+        // Keep seedbox responses separate from the live jar so errors cannot clear it.
+        let response = reqwest::Client::builder()
+            .timeout(Duration::from_secs(20))
+            .redirect(reqwest::redirect::Policy::none())
+            .build()?
+            .get("https://t.myanonamouse.net/json/dynamicSeedbox.php")
+            .header(reqwest::header::COOKIE, format!("mam_id={current}"))
+            .send()
+            .await?;
+        if !response.status().is_success() {
+            bail!("MAM seedbox keepalive returned HTTP {}", response.status());
+        }
+
+        let replacement = response.headers().get_all(reqwest::header::SET_COOKIE)
+            .iter()
+            .filter_map(|header| Cookie::parse(header.to_str().ok()?).ok())
+            .find(|cookie| {
+                cookie.name() == "mam_id"
+                    && !cookie.value().is_empty()
+                    && !cookie.max_age().is_some_and(|age| age <= time::Duration::ZERO)
+                    && !cookie.expires_datetime().is_some_and(|expiry| expiry <= OffsetDateTime::now_utc())
+            });
+        if let Some(cookie) = replacement {
+            let mut jar = self.jar.write().unwrap();
+            // A normal request may have rotated the cookie while this request was in flight.
+            if jar.get_request_values(&url)
+                .find(|(name, _)| *name == "mam_id")
+                .is_some_and(|(_, value)| value == current)
+            {
+                let cookie = Cookie::build(("mam_id", cookie.value().to_owned()))
+                    .path("/")
+                    .secure(true)
+                    .build();
+                jar.remove("myanonamouse.net", "/", "mam_id");
+                jar.store_response_cookies([cookie].into_iter(), &url);
+            }
+        }
+        self.store_cookies().await;
+        Ok(())
     }
 
     pub async fn check_mam_id(&self) -> Result<()> {
@@ -304,10 +360,11 @@ impl<'a> MaM<'a> {
         let Ok(jar) = self.jar.read() else {
             return;
         };
-        let Some(cookie) = jar.get("myanonamouse.net", "/", "mam_id") else {
+        let url = MAM_URL.parse::<Url>().unwrap();
+        let Some((_, value)) = jar.get_request_values(&url).find(|(name, _)| *name == "mam_id") else {
             return;
         };
-        let value = cookie.value().to_string();
+        let value = value.to_owned();
         drop(jar);
         let Ok((_guard, rw)) = self.db.rw_try() else {
             return;
